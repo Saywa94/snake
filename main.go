@@ -25,6 +25,7 @@ type model struct {
 	positionX int
 	width     int
 	height    int
+	canvass   [][]rune
 }
 
 func NewModel() model {
@@ -32,6 +33,8 @@ func NewModel() model {
 		score:     0,
 		positionY: 1,
 		positionX: 1,
+		width:     30,
+		height:    30,
 	}
 }
 
@@ -66,9 +69,32 @@ func (m model) View() string {
 	title := fmt.Sprintf("Score: %d", m.score)
 	title = getCenteredTitle(title, m.width)
 
+	grid := make([][]rune, m.height-3)
+
+	for i := range grid {
+		grid[i] = make([]rune, m.width)
+	}
+	canvass := ""
+
+	for row := range grid {
+		for col := range grid[row] {
+			grid[row][col] = ' '
+			if row == 0 || row == len(grid)-1 {
+				grid[row][col] = '='
+			}
+			if col == 0 || col == len(grid[row])-1 {
+				grid[row][col] = '|'
+			}
+			canvass += string(grid[row][col])
+		}
+		canvass += "\n"
+	}
+
 	s := title
 	s += "\n"
 	s += fmt.Sprintf("Canvass size: (%d, %d)", m.width, m.height) + fmt.Sprintf("Position: (%d, %d)", m.positionY, m.positionX)
+	s += "\n"
+	s += canvass
 
 	return s
 
