@@ -51,7 +51,7 @@ func main() {
 type TickMsg time.Time
 
 func doTick() tea.Cmd {
-	return tea.Tick(time.Millisecond*300, func(t time.Time) tea.Msg {
+	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
 		return TickMsg(t)
 	})
 }
@@ -78,13 +78,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "up":
-			m.position.y--
+			m.position.axis = "y"
+			m.position.direction = -1
 		case "down":
-			m.position.y++
+			m.position.axis = "y"
+			m.position.direction = 1
 		case "right":
-			m.position.x++
+			m.position.axis = "x"
+			m.position.direction = 1
 		case "left":
-			m.position.x--
+			m.position.axis = "x"
+			m.position.direction = -1
 		}
 
 	case tea.WindowSizeMsg:
@@ -117,10 +121,13 @@ func (m model) View() string {
 	for row := range grid {
 		for col := range grid[row] {
 			grid[row][col] = ' '
-			if row == 0 || row == len(grid)-1 {
+
+			// Borders
+			if (row == 0 && col == 0) || (row == 0 && col == m.width-1) || (row == len(grid)-1 && col == 0) || (row == len(grid)-1 && col == m.width-1) {
+				grid[row][col] = '+'
+			} else if row == 0 || row == len(grid)-1 {
 				grid[row][col] = '='
-			}
-			if col == 0 || col == len(grid[row])-1 {
+			} else if col == 0 || col == len(grid[row])-1 {
 				grid[row][col] = '|'
 			}
 
