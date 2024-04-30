@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -61,11 +62,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	s := fmt.Sprintf("Score: %d", m.score)
 
+	title := fmt.Sprintf("Score: %d", m.score)
+	title = getCenteredTitle(title, m.width)
+
+	s := title
 	s += "\n"
 	s += fmt.Sprintf("Canvass size: (%d, %d)", m.width, m.height) + fmt.Sprintf("Position: (%d, %d)", m.positionY, m.positionX)
 
 	return s
 
+}
+
+func getPaddingLeft(title string, width int) int {
+	spaces := width/2 - len(title)/2
+	if spaces < 0 {
+		spaces = 0
+	}
+	return spaces
+}
+func getCenteredTitle(title string, width int) string {
+	return strings.Repeat(" ", getPaddingLeft(title, width)) + title
 }
