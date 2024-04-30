@@ -86,7 +86,7 @@ func (m *model) Advance() {
 }
 
 func (m *model) PlaceCrumb() {
-	crumbX := rand.IntN(len(m.grid[0])) + 1
+	crumbX := rand.IntN(len(m.grid[0])-2) + 1
 	crumbY := rand.IntN(len(m.grid)-2) + 1
 	m.crumb = position{crumbX, crumbY, "", 0}
 }
