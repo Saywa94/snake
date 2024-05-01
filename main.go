@@ -11,8 +11,9 @@ import (
 )
 
 type model struct {
-	score uint
-	position
+	score  uint
+	head   position
+	body   []position
 	grid   [][]rune
 	width  int
 	height int
@@ -31,7 +32,7 @@ func NewModel() model {
 		score:  0,
 		width:  30,
 		height: 30,
-		position: position{
+		head: position{
 			x:         0,
 			y:         0,
 			axis:      "x",
@@ -70,25 +71,92 @@ func (m model) Init() tea.Cmd {
 
 func (m model) CheckCollision() bool {
 	// Border collision
-	if m.position.x == 0 || m.position.x == len(m.grid[0])-1 || m.position.y == 0 || m.position.y == len(m.grid)-1 {
+	if m.head.x == 0 || m.head.x == len(m.grid[0])-1 || m.head.y == 0 || m.head.y == len(m.grid)-1 {
 		return true
 	}
 	return false
 }
 
 func (m *model) Advance() {
-	if m.position.axis == "x" {
-		m.position.x += m.position.direction
+	// Empty previous position
+	prevPos := m.head
+	m.grid[prevPos.y][prevPos.x] = ' '
+
+	// Restrict backwards movement
+	if m.head.axis == "x" {
+		m.head.x += m.head.direction
 	}
-	if m.position.axis == "y" {
-		m.position.y += m.position.direction
+	if m.head.axis == "y" {
+		m.head.y += m.head.direction
+	}
+
+	// Fill new position
+	m.grid[m.head.y][m.head.x] = '@'
+
+	// Move body
+	if len(m.body) > 0 {
+		last := m.body[len(m.body)-1]
+		m.grid[last.y][last.x] = ' '
+	}
+	var newBody []position
+	for i := range m.body {
+		if i == 0 {
+			newBody = append(newBody, prevPos)
+		} else {
+			newBody = append(newBody, m.body[i-1])
+		}
+	}
+
+	m.body = newBody
+	for _, p := range m.body {
+		m.grid[p.y][p.x] = 'o'
 	}
 }
 
 func (m *model) PlaceCrumb() {
-	crumbX := rand.IntN(len(m.grid[0])-2) + 1
-	crumbY := rand.IntN(len(m.grid)-2) + 1
+	crumbX := 0
+	crumbY := 0
+	for {
+		crumbX = rand.IntN(len(m.grid[0])-2) + 1
+		crumbY = rand.IntN(len(m.grid)-2) + 1
+
+		if m.grid[crumbY][crumbX] == ' ' {
+			break
+		}
+	}
+
+	m.grid[crumbY][crumbX] = 'x'
 	m.crumb = position{crumbX, crumbY, "", 0}
+}
+
+func (m *model) AddBodyPart() {
+	p := position{}
+	m.body = append(m.body, p)
+}
+
+func (m *model) FillGrid() {
+	for row := range m.grid {
+		for col := range m.grid[row] {
+			m.grid[row][col] = ' '
+
+			// Add walls
+			if (row == 0 && col == 0) || (row == 0 && col == m.width-1) || (row == len(m.grid)-1 && col == 0) || (row == len(m.grid)-1 && col == m.width-1) {
+				m.grid[row][col] = '+'
+			} else if row == 0 || row == len(m.grid)-1 {
+				m.grid[row][col] = '='
+			} else if col == 0 || col == len(m.grid[row])-1 {
+				m.grid[row][col] = '|'
+			}
+
+			if col == m.head.x && row == m.head.y {
+				m.grid[row][col] = '@'
+			}
+			if col == m.crumb.x && row == m.crumb.y {
+				m.grid[row][col] = 'x'
+			}
+
+		}
+	}
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -100,31 +168,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "up":
-			if m.position.axis == "y" && m.position.direction == 1 {
+			if m.head.axis == "y" && m.head.direction == 1 {
 				return m, nil
 			}
-			m.position.axis = "y"
-			m.position.direction = -1
+			m.head.axis = "y"
+			m.head.direction = -1
 		case "down":
-			if m.position.axis == "y" && m.position.direction == -1 {
+			if m.head.axis == "y" && m.head.direction == -1 {
 				return m, nil
 			}
-			m.position.axis = "y"
-			m.position.direction = 1
+			m.head.axis = "y"
+			m.head.direction = 1
 		case "right":
-			if m.position.axis == "x" && m.position.direction == -1 {
+			if m.head.axis == "x" && m.head.direction == -1 {
 				return m, nil
 			}
-			m.position.axis = "x"
-			m.position.direction = 1
+			m.head.axis = "x"
+			m.head.direction = 1
 		case "left":
-			if m.position.axis == "x" && m.position.direction == 1 {
+			if m.head.axis == "x" && m.head.direction == 1 {
 				return m, nil
 			}
-			m.position.axis = "x"
-			m.position.direction = -1
-			// case " ":
-			// 	m.PlaceCrumb()
+			m.head.axis = "x"
+			m.head.direction = -1
+		case " ":
+			m.PlaceCrumb()
 		}
 
 	case TickMsg:
@@ -135,12 +203,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		if m.position.x == m.crumb.x && m.position.y == m.crumb.y {
+		// Check if the crumb has been eaten
+		if m.head.x == m.crumb.x && m.head.y == m.crumb.y {
 			m.score++
 			m.PlaceCrumb()
+
+			// Add new body part
+			m.AddBodyPart()
+
 		}
 
-		if m.position.axis == "x" {
+		// Check if we need to speed up
+		if m.head.axis == "x" {
 			return m, doTick(normalSpeed)
 		} else {
 			return m, doTick(slowSpeed)
@@ -151,14 +225,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 		// Position the player in the center
-		m.position.x = m.width / 2
-		m.position.y = m.height/2 - 1
+		m.head.x = m.width / 2
+		m.head.y = m.height/2 - 1
+
+		// Create temporary body
+		m.body = []position{
+			{
+				x:         m.head.x - 1,
+				y:         m.head.y,
+				axis:      m.head.axis,
+				direction: m.head.direction,
+			},
+		}
 
 		// Create playlale grid
 		m.grid = make([][]rune, m.height-3)
 		for i := range m.grid {
 			m.grid[i] = make([]rune, m.width)
 		}
+
+		// Fill in the grid
+		m.FillGrid()
 
 		// Add one crumb
 		m.PlaceCrumb()
@@ -176,38 +263,18 @@ func (m model) View() string {
 	title := fmt.Sprintf("Score: %d", m.score)
 	title = getCenteredTitle(title, m.width)
 
-	grid := m.grid
-
 	canvass := ""
 
-	for row := range grid {
-		for col := range grid[row] {
-			grid[row][col] = ' '
-
-			// Borders
-			if (row == 0 && col == 0) || (row == 0 && col == m.width-1) || (row == len(grid)-1 && col == 0) || (row == len(grid)-1 && col == m.width-1) {
-				grid[row][col] = '+'
-			} else if row == 0 || row == len(grid)-1 {
-				grid[row][col] = '='
-			} else if col == 0 || col == len(grid[row])-1 {
-				grid[row][col] = '|'
-			}
-
-			if col == m.position.x && row == m.position.y {
-				grid[row][col] = '@'
-			}
-			if col == m.crumb.x && row == m.crumb.y {
-				grid[row][col] = 'x'
-			}
-
-			canvass += string(grid[row][col])
+	for row := range m.grid {
+		for col := range m.grid[row] {
+			canvass += string(m.grid[row][col])
 		}
 		canvass += "\n"
 	}
 
 	s := title
 	s += "\n"
-	s += fmt.Sprintf("Canvass size: (%d, %d)", m.width, m.height) + " " + fmt.Sprintf("Position: (%d, %d)", m.position.x, m.position.y)
+	s += fmt.Sprintf("Canvass size: (%d, %d)", m.width, m.height) + " " + fmt.Sprintf("Position: (%d, %d)", m.head.x, m.head.y) + " " + fmt.Sprintf("Parts: %d", len(m.body))
 	s += "\n"
 	s += canvass
 
