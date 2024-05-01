@@ -71,10 +71,17 @@ func (m model) Init() tea.Cmd {
 
 func (m model) CheckCollision() bool {
 	// Border collision
+	hasColided := false
 	if m.head.x == 0 || m.head.x == len(m.grid[0])-1 || m.head.y == 0 || m.head.y == len(m.grid)-1 {
-		return true
+		hasColided = true
 	}
-	return false
+
+	for _, p := range m.body {
+		if p.x == m.head.x && p.y == m.head.y {
+			hasColided = true
+		}
+	}
+	return hasColided
 }
 
 func (m *model) Advance() {
