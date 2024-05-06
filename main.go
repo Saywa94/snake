@@ -8,16 +8,23 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
 	score  uint
 	head   position
 	body   []position
-	grid   [][]rune
+	grid   [][]string
 	width  int
 	height int
-	crumb  position
+	crumb
+}
+
+type crumb struct {
+	x     int
+	y     int
+	style lipgloss.Style
 }
 
 type position struct {
@@ -25,6 +32,7 @@ type position struct {
 	y         int
 	axis      string
 	direction int
+	content   string
 }
 
 func NewModel() model {
@@ -37,6 +45,10 @@ func NewModel() model {
 			y:         0,
 			axis:      "x",
 			direction: 1,
+			content:   "o",
+		},
+		body: []position{
+			{x: 0, y: 0, content: "o"},
 		},
 	}
 }
@@ -87,7 +99,7 @@ func (m model) CheckCollision() bool {
 func (m *model) Advance() {
 	// Empty previous position
 	prevPos := m.head
-	m.grid[prevPos.y][prevPos.x] = ' '
+	m.grid[prevPos.y][prevPos.x] = " "
 
 	// Restrict backwards movement
 	if m.head.axis == "x" {
@@ -98,25 +110,29 @@ func (m *model) Advance() {
 	}
 
 	// Fill new position
-	m.grid[m.head.y][m.head.x] = '@'
+	m.grid[m.head.y][m.head.x] = "@"
 
 	// Move body
 	if len(m.body) > 0 {
 		last := m.body[len(m.body)-1]
-		m.grid[last.y][last.x] = ' '
+		m.grid[last.y][last.x] = " "
 	}
 	var newBody []position
-	for i := range m.body {
+	for i, p := range m.body {
 		if i == 0 {
 			newBody = append(newBody, prevPos)
 		} else {
-			newBody = append(newBody, m.body[i-1])
+			newBody = append(newBody, position{
+				x:       m.body[i-1].x,
+				y:       m.body[i-1].y,
+				content: p.content,
+			})
 		}
 	}
 
 	m.body = newBody
 	for _, p := range m.body {
-		m.grid[p.y][p.x] = 'o'
+		m.grid[p.y][p.x] = p.content
 	}
 }
 
@@ -127,39 +143,42 @@ func (m *model) PlaceCrumb() {
 		crumbX = rand.IntN(len(m.grid[0])-2) + 1
 		crumbY = rand.IntN(len(m.grid)-2) + 1
 
-		if m.grid[crumbY][crumbX] == ' ' {
+		if m.grid[crumbY][crumbX] == " " {
 			break
 		}
 	}
 
-	m.grid[crumbY][crumbX] = 'x'
-	m.crumb = position{crumbX, crumbY, "", 0}
+	color := rand.IntN(231)
+	var crumbStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(fmt.Sprintf("%d", color)))
+
+	m.grid[crumbY][crumbX] = crumbStyle.Render("x")
+	m.crumb = crumb{crumbX, crumbY, crumbStyle}
 }
 
 func (m *model) AddBodyPart() {
-	p := position{}
+	style := m.crumb.style
+	p := position{
+		content: style.Render("o"),
+	}
 	m.body = append(m.body, p)
 }
 
 func (m *model) FillGrid() {
 	for row := range m.grid {
 		for col := range m.grid[row] {
-			m.grid[row][col] = ' '
+			m.grid[row][col] = " "
 
 			// Add walls
 			if (row == 0 && col == 0) || (row == 0 && col == m.width-1) || (row == len(m.grid)-1 && col == 0) || (row == len(m.grid)-1 && col == m.width-1) {
-				m.grid[row][col] = '+'
+				m.grid[row][col] = "+"
 			} else if row == 0 || row == len(m.grid)-1 {
-				m.grid[row][col] = '='
+				m.grid[row][col] = "="
 			} else if col == 0 || col == len(m.grid[row])-1 {
-				m.grid[row][col] = '|'
+				m.grid[row][col] = "|"
 			}
 
 			if col == m.head.x && row == m.head.y {
-				m.grid[row][col] = '@'
-			}
-			if col == m.crumb.x && row == m.crumb.y {
-				m.grid[row][col] = 'x'
+				m.grid[row][col] = "@"
 			}
 
 		}
@@ -213,10 +232,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Check if the crumb has been eaten
 		if m.head.x == m.crumb.x && m.head.y == m.crumb.y {
 			m.score++
-			m.PlaceCrumb()
 
 			// Add new body part
 			m.AddBodyPart()
+
+			// Place new crumb at random position
+			m.PlaceCrumb()
 
 		}
 
@@ -246,9 +267,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Create playlale grid
-		m.grid = make([][]rune, m.height-3)
+		m.grid = make([][]string, m.height-3)
 		for i := range m.grid {
-			m.grid[i] = make([]rune, m.width)
+			m.grid[i] = make([]string, m.width)
 		}
 
 		// Fill in the grid
@@ -260,6 +281,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return m, nil
 }
+
+var style = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
+var style2 = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 
 func (m model) View() string {
 
@@ -279,9 +303,9 @@ func (m model) View() string {
 		canvass += "\n"
 	}
 
-	s := title
+	s := style.Render(title)
 	s += "\n"
-	s += fmt.Sprintf("Canvass size: (%d, %d)", m.width, m.height) + " " + fmt.Sprintf("Position: (%d, %d)", m.head.x, m.head.y) + " " + fmt.Sprintf("Parts: %d", len(m.body))
+	s += style2.Render(fmt.Sprintf("Canvass size: (%d, %d)", m.width, m.height) + " " + fmt.Sprintf("Position: (%d, %d)", m.head.x, m.head.y) + " " + fmt.Sprintf("Parts: %d", len(m.body)))
 	s += "\n"
 	s += canvass
 
