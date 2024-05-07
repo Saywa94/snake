@@ -48,7 +48,7 @@ func NewModel() model {
 			content:   "o",
 		},
 		body: []position{
-			{x: 0, y: 0, content: "o"},
+			{x: 2, y: 2, content: "o"},
 		},
 	}
 }
@@ -148,8 +148,8 @@ func (m *model) PlaceCrumb() {
 		}
 	}
 
-	color := rand.IntN(231)
-	var crumbStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(fmt.Sprintf("%d", color)))
+	color := NextColor(m.score)
+	var crumbStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 
 	m.grid[crumbY][crumbX] = crumbStyle.Render("x")
 	m.crumb = crumb{crumbX, crumbY, crumbStyle}
@@ -282,7 +282,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-var style = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
+var style = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7bdff2"))
 var style2 = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 
 func (m model) View() string {
