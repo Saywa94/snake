@@ -58,6 +58,8 @@ const (
 	slowSpeed   = 55
 )
 
+var Paused = true
+
 func main() {
 
 	p := tea.NewProgram(NewModel(), tea.WithAltScreen())
@@ -72,13 +74,18 @@ func main() {
 type TickMsg time.Time
 
 func doTick(ms time.Duration) tea.Cmd {
+	Paused = false
 	return tea.Tick(time.Millisecond*ms, func(t time.Time) tea.Msg {
 		return TickMsg(t)
 	})
 }
 
 func (m model) Init() tea.Cmd {
-	return doTick(normalSpeed)
+	// TODO: Have a start screen
+	// before starting the game
+
+	// return doTick(normalSpeed)
+	return nil
 }
 
 func (m model) CheckCollision() bool {
@@ -218,15 +225,31 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.head.axis = "x"
 			m.head.direction = -1
 		case " ":
-			m.PlaceCrumb()
+			// Implement pause/resume
+			if Paused == false {
+				Paused = true
+				return m, nil
+			} else {
+				Paused = true
+				return m, doTick(normalSpeed)
+			}
+
 		}
 
 	case TickMsg:
 
+		if Paused == true {
+			return m, nil
+		}
+
 		m.Advance()
 
 		if m.CheckCollision() {
-			return m, tea.Quit
+			// Game over
+			// TODO: Show score + option to start new game
+
+			// return m, tea.Quit
+			return m, nil
 		}
 
 		// Check if the crumb has been eaten
@@ -305,7 +328,7 @@ func (m model) View() string {
 
 	s := style.Render(title)
 	s += "\n"
-	s += style2.Render(fmt.Sprintf("Canvass size: (%d, %d)", m.width, m.height) + " " + fmt.Sprintf("Position: (%d, %d)", m.head.x, m.head.y) + " " + fmt.Sprintf("Parts: %d", len(m.body)))
+	s += style2.Render(fmt.Sprintf("Canvass size: (%d, %d)", m.width, m.height) + " " + fmt.Sprintf("Position: (%d, %d)", m.head.x, m.head.y) + " " + fmt.Sprintf("Parts: %d", len(m.body)) + fmt.Sprintf("Paused: %t", Paused))
 	s += "\n"
 	s += canvass
 
