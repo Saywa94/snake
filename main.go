@@ -7,18 +7,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Saywa94/snake/internal"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type model struct {
 	score  uint
-	head   position
-	body   []position
 	grid   [][]string
 	width  int
 	height int
 	crumb
+	snake internal.Snake
 }
 
 type crumb struct {
@@ -27,33 +28,19 @@ type crumb struct {
 	style lipgloss.Style
 }
 
-type position struct {
-	x         int
-	y         int
-	axis      string
-	direction int
-	content   string
-}
-
 func NewModel() model {
 	return model{
 		score:  0,
 		width:  30,
 		height: 30,
-		head: position{
-			x:         0,
-			y:         0,
-			axis:      "x",
-			direction: 1,
-			content:   "o",
-		},
-		body: []position{
-			{x: 2, y: 2, content: "o"},
+		snake: internal.Snake{
+			Head: internal.Position{},
+			Body: []internal.Position{},
 		},
 	}
 }
 
-// TODO:Figure out how to make this configurable
+// TODO: Figure out how to make this configurable
 const (
 	normalSpeed = 30
 	slowSpeed   = 55
@@ -92,12 +79,12 @@ func (m model) Init() tea.Cmd {
 func (m model) CheckCollision() bool {
 	// Border collision
 	hasColided := false
-	if m.head.x == 0 || m.head.x == len(m.grid[0])-1 || m.head.y == 0 || m.head.y == len(m.grid)-1 {
+	if m.snake.Head.X == 0 || m.snake.Head.X == len(m.grid[0])-1 || m.snake.Head.Y == 0 || m.snake.Head.Y == len(m.grid)-1 {
 		hasColided = true
 	}
 
-	for _, p := range m.body {
-		if p.x == m.head.x && p.y == m.head.y {
+	for _, p := range m.snake.Body {
+		if p.X == m.snake.Head.X && p.Y == m.snake.Head.Y {
 			hasColided = true
 		}
 	}
@@ -106,41 +93,41 @@ func (m model) CheckCollision() bool {
 
 func (m *model) Advance() {
 	// Empty previous position
-	prevPos := m.head
-	m.grid[prevPos.y][prevPos.x] = " "
+	prevPos := m.snake.Head
+	m.grid[prevPos.Y][prevPos.X] = " "
 
 	// Restrict backwards movement
-	if m.head.axis == "x" {
-		m.head.x += m.head.direction
+	if m.snake.Head.Axis == "x" {
+		m.snake.Head.X += m.snake.Head.Direction
 	}
-	if m.head.axis == "y" {
-		m.head.y += m.head.direction
+	if m.snake.Head.Axis == "y" {
+		m.snake.Head.Y += m.snake.Head.Direction
 	}
 
 	// Fill new position
-	m.grid[m.head.y][m.head.x] = "@"
+	m.grid[m.snake.Head.Y][m.snake.Head.X] = "@"
 
 	// Move body
-	if len(m.body) > 0 {
-		last := m.body[len(m.body)-1]
-		m.grid[last.y][last.x] = " "
+	if len(m.snake.Body) > 0 {
+		last := m.snake.Body[len(m.snake.Body)-1]
+		m.grid[last.Y][last.X] = " "
 	}
-	var newBody []position
-	for i, p := range m.body {
+	var newBody []internal.Position
+	for i, p := range m.snake.Body {
 		if i == 0 {
 			newBody = append(newBody, prevPos)
 		} else {
-			newBody = append(newBody, position{
-				x:       m.body[i-1].x,
-				y:       m.body[i-1].y,
-				content: p.content,
+			newBody = append(newBody, internal.Position{
+				X:       m.snake.Body[i-1].X,
+				Y:       m.snake.Body[i-1].Y,
+				Content: p.Content,
 			})
 		}
 	}
 
-	m.body = newBody
-	for _, p := range m.body {
-		m.grid[p.y][p.x] = p.content
+	m.snake.Body = newBody
+	for _, p := range m.snake.Body {
+		m.grid[p.Y][p.X] = p.Content
 	}
 }
 
@@ -165,10 +152,10 @@ func (m *model) PlaceCrumb() {
 
 func (m *model) AddBodyPart() {
 	style := m.crumb.style
-	p := position{
-		content: style.Render("o"),
+	p := internal.Position{
+		Content: style.Render("o"),
 	}
-	m.body = append(m.body, p)
+	m.snake.Body = append(m.snake.Body, p)
 }
 
 func (m *model) FillGrid() {
@@ -185,7 +172,7 @@ func (m *model) FillGrid() {
 				m.grid[row][col] = "|"
 			}
 
-			if col == m.head.x && row == m.head.y {
+			if col == m.snake.Head.X && row == m.snake.Head.Y {
 				m.grid[row][col] = "@"
 			}
 
@@ -202,29 +189,29 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "up":
-			if m.head.axis == "y" && m.head.direction == 1 {
+			if m.snake.Head.Axis == "y" && m.snake.Head.Direction == 1 {
 				return m, nil
 			}
-			m.head.axis = "y"
-			m.head.direction = -1
+			m.snake.Head.Axis = "y"
+			m.snake.Head.Direction = -1
 		case "down":
-			if m.head.axis == "y" && m.head.direction == -1 {
+			if m.snake.Head.Axis == "y" && m.snake.Head.Direction == -1 {
 				return m, nil
 			}
-			m.head.axis = "y"
-			m.head.direction = 1
+			m.snake.Head.Axis = "y"
+			m.snake.Head.Direction = 1
 		case "right":
-			if m.head.axis == "x" && m.head.direction == -1 {
+			if m.snake.Head.Axis == "x" && m.snake.Head.Direction == -1 {
 				return m, nil
 			}
-			m.head.axis = "x"
-			m.head.direction = 1
+			m.snake.Head.Axis = "x"
+			m.snake.Head.Direction = 1
 		case "left":
-			if m.head.axis == "x" && m.head.direction == 1 {
+			if m.snake.Head.Axis == "x" && m.snake.Head.Direction == 1 {
 				return m, nil
 			}
-			m.head.axis = "x"
-			m.head.direction = -1
+			m.snake.Head.Axis = "x"
+			m.snake.Head.Direction = -1
 		case " ":
 			// Implement pause/resume
 			if Paused == false {
@@ -261,7 +248,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Check if the crumb has been eaten
-		if m.head.x == m.crumb.x && m.head.y == m.crumb.y {
+		if m.snake.Head.X == m.crumb.x && m.snake.Head.Y == m.crumb.y {
 			m.score++
 
 			// Add new body part
@@ -273,7 +260,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Check if we need to speed up
-		if m.head.axis == "x" {
+		if m.snake.Head.Axis == "x" {
 			return m, doTick(normalSpeed)
 		} else {
 			return m, doTick(slowSpeed)
@@ -284,16 +271,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 		// Position the player in the center
-		m.head.x = m.width / 2
-		m.head.y = m.height/2 - 1
+		m.snake.Head.X = m.width / 2
+		m.snake.Head.Y = m.height/2 - 1
 
 		// Create temporary body
-		m.body = []position{
+		m.snake.Body = []internal.Position{
 			{
-				x:         m.head.x - 1,
-				y:         m.head.y,
-				axis:      m.head.axis,
-				direction: m.head.direction,
+				X:         m.snake.Head.X - 1,
+				Y:         m.snake.Head.Y,
+				Axis:      m.snake.Head.Axis,
+				Direction: m.snake.Head.Direction,
 			},
 		}
 
@@ -338,7 +325,7 @@ func (m model) View() string {
 
 	s := style.Render(title)
 	s += "\n"
-	s += style2.Render(fmt.Sprintf("Position: (%d, %d)", m.head.x, m.head.y) + " " + fmt.Sprintf("Paused: %t", Paused))
+	s += style2.Render(fmt.Sprintf("Position: (%d, %d)", m.snake.Head.X, m.snake.Head.Y) + " " + fmt.Sprintf("Paused: %t", Paused))
 	s += "\n"
 	s += canvass
 
@@ -348,16 +335,7 @@ func (m model) View() string {
 
 func (m *model) RestartGame() {
 	m.score = 0
-	m.head = position{
-		x:         m.width / 2,
-		y:         m.height/2 - 1,
-		axis:      "x",
-		direction: 1,
-		content:   "o",
-	}
-	m.body = []position{
-		{x: 2, y: 2, content: "o"},
-	}
+	m.snake.Start(m.width, m.height)
 
 }
 
