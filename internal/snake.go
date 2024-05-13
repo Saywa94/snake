@@ -13,16 +13,15 @@ type Position struct {
 	Content   string
 }
 
-func (s *Snake) Start(width int, height int) {
-
-	s.Head = Position{
-		X:         width / 2,
-		Y:         height/2 - 1,
-		Axis:      "x",
-		Direction: 1,
-		Content:   "o",
-	}
-	s.Body = []Position{
-		{X: 2, Y: 2, Content: "o"},
+func CreateSnake(width int, height int) Snake {
+	return Snake{
+		Head: Position{
+			X:         width / 2,
+			Y:         height/2 - 1,
+			Axis:      "x",
+			Direction: 1,
+			Content:   "@",
+		},
+		Body: []Position{},
 	}
 }

@@ -33,10 +33,6 @@ func NewModel() model {
 		score:  0,
 		width:  30,
 		height: 30,
-		snake: internal.Snake{
-			Head: internal.Position{},
-			Body: []internal.Position{},
-		},
 	}
 }
 
@@ -115,7 +111,15 @@ func (m *model) Advance() {
 	var newBody []internal.Position
 	for i, p := range m.snake.Body {
 		if i == 0 {
-			newBody = append(newBody, prevPos)
+			newBody = []internal.Position{
+				{
+					X:         prevPos.X,
+					Y:         prevPos.Y,
+					Axis:      prevPos.Axis,
+					Direction: prevPos.Direction,
+					Content:   "o",
+				},
+			}
 		} else {
 			newBody = append(newBody, internal.Position{
 				X:       m.snake.Body[i-1].X,
@@ -267,22 +271,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.WindowSizeMsg:
+
+		// NOTE: Here is the real start of the game
 		m.width = msg.Width
 		m.height = msg.Height
 
-		// Position the player in the center
-		m.snake.Head.X = m.width / 2
-		m.snake.Head.Y = m.height/2 - 1
-
-		// Create temporary body
-		m.snake.Body = []internal.Position{
-			{
-				X:         m.snake.Head.X - 1,
-				Y:         m.snake.Head.Y,
-				Axis:      m.snake.Head.Axis,
-				Direction: m.snake.Head.Direction,
-			},
-		}
+		// TODO: Move the creation of the snake to a user key press
+		m.snake = internal.CreateSnake(m.width, m.height)
 
 		// Create playlale grid
 		m.grid = make([][]string, m.height-3)
@@ -335,8 +330,7 @@ func (m model) View() string {
 
 func (m *model) RestartGame() {
 	m.score = 0
-	m.snake.Start(m.width, m.height)
-
+	m.snake = internal.CreateSnake(m.width, m.height)
 }
 
 func getPaddingLeft(title string, width int) int {
