@@ -53,6 +53,7 @@ func NewModel() model {
 	}
 }
 
+// TODO:Figure out how to make this configurable
 const (
 	normalSpeed = 30
 	slowSpeed   = 55
@@ -233,6 +234,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Paused = true
 				return m, doTick(normalSpeed)
 			}
+		case "r":
+			if Paused == true {
+				Paused = false
+				m.RestartGame()
+				return m, doTick(normalSpeed)
+			}
 
 		}
 
@@ -249,6 +256,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// TODO: Show score + option to start new game
 
 			// return m, tea.Quit
+			Paused = true
 			return m, nil
 		}
 
@@ -314,6 +322,8 @@ func (m model) View() string {
 		return "No intialized"
 	}
 
+	// TODO: Render different view according to game state
+
 	title := fmt.Sprintf("Score: %d", m.score)
 	title = getCenteredTitle(title, m.width)
 
@@ -328,11 +338,26 @@ func (m model) View() string {
 
 	s := style.Render(title)
 	s += "\n"
-	s += style2.Render(fmt.Sprintf("Canvass size: (%d, %d)", m.width, m.height) + " " + fmt.Sprintf("Position: (%d, %d)", m.head.x, m.head.y) + " " + fmt.Sprintf("Parts: %d", len(m.body)) + fmt.Sprintf("Paused: %t", Paused))
+	s += style2.Render(fmt.Sprintf("Position: (%d, %d)", m.head.x, m.head.y) + " " + fmt.Sprintf("Paused: %t", Paused))
 	s += "\n"
 	s += canvass
 
 	return s
+
+}
+
+func (m *model) RestartGame() {
+	m.score = 0
+	m.head = position{
+		x:         m.width / 2,
+		y:         m.height/2 - 1,
+		axis:      "x",
+		direction: 1,
+		content:   "o",
+	}
+	m.body = []position{
+		{x: 2, y: 2, content: "o"},
+	}
 
 }
 
