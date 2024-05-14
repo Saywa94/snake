@@ -1,4 +1,4 @@
-package internal
+package game
 
 type Snake struct {
 	Head Position

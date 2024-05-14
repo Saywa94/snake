@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Saywa94/snake/internal"
+	"github.com/Saywa94/snake/game"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -20,7 +20,7 @@ type model struct {
 	width     int
 	height    int
 	crumb
-	snake internal.Snake
+	snake game.Snake
 }
 
 type crumb struct {
@@ -126,7 +126,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.gameState == "start" {
 
 				m.gameState = "running"
-				m.snake = internal.CreateSnake(m.width, m.height)
+				m.snake = game.CreateSnake(m.width, m.height)
 
 				// Create playlale grid
 				m.grid = make([][]string, m.height)
@@ -184,7 +184,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height - extraRowsUsed
 
-		// TODO: Bind the following commands to a user key press
 	}
 
 	return m, nil
@@ -256,10 +255,10 @@ func (m *model) Advance() {
 		last := m.snake.Body[len(m.snake.Body)-1]
 		m.grid[last.Y][last.X] = " "
 	}
-	var newBody []internal.Position
+	var newBody []game.Position
 	for i, p := range m.snake.Body {
 		if i == 0 {
-			newBody = []internal.Position{
+			newBody = []game.Position{
 				{
 					X:         prevPos.X,
 					Y:         prevPos.Y,
@@ -269,7 +268,7 @@ func (m *model) Advance() {
 				},
 			}
 		} else {
-			newBody = append(newBody, internal.Position{
+			newBody = append(newBody, game.Position{
 				X:       m.snake.Body[i-1].X,
 				Y:       m.snake.Body[i-1].Y,
 				Content: p.Content,
@@ -304,7 +303,7 @@ func (m *model) PlaceCrumb() {
 
 func (m *model) AddBodyPart() {
 	style := m.crumb.style
-	p := internal.Position{
+	p := game.Position{
 		Content: style.Render("o"),
 	}
 	m.snake.Body = append(m.snake.Body, p)
@@ -337,7 +336,7 @@ var style2 = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 
 func (m *model) RestartGame() {
 	m.score = 0
-	m.snake = internal.CreateSnake(m.width, m.height)
+	m.snake = game.CreateSnake(m.width, m.height)
 	m.FillGrid()
 	m.PlaceCrumb()
 }
