@@ -38,8 +38,9 @@ func NewModel() model {
 
 // TODO: Figure out how to make this configurable
 const (
-	normalSpeed = 30
-	slowSpeed   = 55
+	normalSpeed   = 30
+	slowSpeed     = 55
+	extraRowsUsed = 3
 )
 
 var Paused = true
@@ -72,20 +73,161 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) CheckCollision() bool {
-	// Border collision
-	hasColided := false
-	if m.snake.Head.X == 0 || m.snake.Head.X == len(m.grid[0])-1 || m.snake.Head.Y == 0 || m.snake.Head.Y == len(m.grid)-1 {
-		hasColided = true
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+
+	case tea.KeyMsg:
+
+		switch msg.String() {
+		case "ctrl+c", "q":
+			return m, tea.Quit
+		case "up":
+			if m.snake.Head.Axis == "y" && m.snake.Head.Direction == 1 {
+				return m, nil
+			}
+			m.snake.Head.Axis = "y"
+			m.snake.Head.Direction = -1
+		case "down":
+			if m.snake.Head.Axis == "y" && m.snake.Head.Direction == -1 {
+				return m, nil
+			}
+			m.snake.Head.Axis = "y"
+			m.snake.Head.Direction = 1
+		case "right":
+			if m.snake.Head.Axis == "x" && m.snake.Head.Direction == -1 {
+				return m, nil
+			}
+			m.snake.Head.Axis = "x"
+			m.snake.Head.Direction = 1
+		case "left":
+			if m.snake.Head.Axis == "x" && m.snake.Head.Direction == 1 {
+				return m, nil
+			}
+			m.snake.Head.Axis = "x"
+			m.snake.Head.Direction = -1
+		case " ":
+			// Implement pause/resume
+			if Paused == false {
+				Paused = true
+				return m, nil
+			} else {
+				Paused = true
+				return m, doTick(normalSpeed)
+			}
+		case "r":
+			if Paused == true {
+				Paused = false
+				m.RestartGame()
+				return m, doTick(normalSpeed)
+			}
+
+		}
+
+	case TickMsg:
+
+		if Paused == true {
+			return m, nil
+		}
+
+		m.Advance()
+
+		if m.snake.HasColided(m.width, m.height) {
+			// Game over
+			// TODO: Show score + option to start new game
+
+			// return m, tea.Quit
+			Paused = true
+			return m, nil
+		}
+
+		// Check if the crumb has been eaten
+		if m.snake.Head.X == m.crumb.x && m.snake.Head.Y == m.crumb.y {
+			m.score++
+
+			// Add new body part
+			m.AddBodyPart()
+
+			// Place new crumb at random position
+			m.PlaceCrumb()
+
+		}
+
+		// Check if we need to speed up
+		if m.snake.Head.Axis == "x" {
+			return m, doTick(normalSpeed)
+		} else {
+			return m, doTick(slowSpeed)
+		}
+
+	case tea.WindowSizeMsg:
+
+		// NOTE: Here is the real start of the game
+		m.width = msg.Width
+		m.height = msg.Height - extraRowsUsed
+
+		// TODO: Move the creation of the snake to a user key press
+		m.snake = internal.CreateSnake(m.width, m.height)
+
+		// Create playlale grid
+		m.grid = make([][]string, m.height)
+		for i := range m.grid {
+			m.grid[i] = make([]string, m.width)
+		}
+
+		// Fill in the grid
+		m.FillGrid()
+
+		// Add one crumb
+		m.PlaceCrumb()
 	}
 
-	for _, p := range m.snake.Body {
-		if p.X == m.snake.Head.X && p.Y == m.snake.Head.Y {
-			hasColided = true
-		}
-	}
-	return hasColided
+	return m, nil
 }
+
+func (m model) View() string {
+
+	if m.width == 0 || m.height == 0 {
+		return "No intialized"
+	}
+
+	// TODO: Render different view according to game state
+
+	title := fmt.Sprintf("Score: %d", m.score)
+	title = getCenteredTitle(title, m.width)
+
+	canvass := ""
+
+	for row := range m.grid {
+		for col := range m.grid[row] {
+			canvass += string(m.grid[row][col])
+		}
+		canvass += "\n"
+	}
+
+	s := style.Render(title)
+	s += "\n"
+	s += style2.Render(fmt.Sprintf("Position: (%d, %d)", m.snake.Head.X, m.snake.Head.Y) + " " + fmt.Sprintf("Paused: %t", Paused))
+	s += "\n"
+	s += canvass
+
+	return s
+
+}
+
+// func (m model) CheckCollision() bool {
+// 	// Border collision
+// 	hasColided := false
+// 	if m.snake.Head.X == 0 || m.snake.Head.X == len(m.grid[0])-1 || m.snake.Head.Y == 0 || m.snake.Head.Y == len(m.grid)-1 {
+// 		hasColided = true
+// 	}
+//
+// 	for _, p := range m.snake.Body {
+// 		if p.X == m.snake.Head.X && p.Y == m.snake.Head.Y {
+// 			hasColided = true
+// 		}
+// 	}
+// 	return hasColided
+// }
 
 func (m *model) Advance() {
 	// Empty previous position
@@ -184,149 +326,8 @@ func (m *model) FillGrid() {
 	}
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-
-	case tea.KeyMsg:
-
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "up":
-			if m.snake.Head.Axis == "y" && m.snake.Head.Direction == 1 {
-				return m, nil
-			}
-			m.snake.Head.Axis = "y"
-			m.snake.Head.Direction = -1
-		case "down":
-			if m.snake.Head.Axis == "y" && m.snake.Head.Direction == -1 {
-				return m, nil
-			}
-			m.snake.Head.Axis = "y"
-			m.snake.Head.Direction = 1
-		case "right":
-			if m.snake.Head.Axis == "x" && m.snake.Head.Direction == -1 {
-				return m, nil
-			}
-			m.snake.Head.Axis = "x"
-			m.snake.Head.Direction = 1
-		case "left":
-			if m.snake.Head.Axis == "x" && m.snake.Head.Direction == 1 {
-				return m, nil
-			}
-			m.snake.Head.Axis = "x"
-			m.snake.Head.Direction = -1
-		case " ":
-			// Implement pause/resume
-			if Paused == false {
-				Paused = true
-				return m, nil
-			} else {
-				Paused = true
-				return m, doTick(normalSpeed)
-			}
-		case "r":
-			if Paused == true {
-				Paused = false
-				m.RestartGame()
-				return m, doTick(normalSpeed)
-			}
-
-		}
-
-	case TickMsg:
-
-		if Paused == true {
-			return m, nil
-		}
-
-		m.Advance()
-
-		if m.CheckCollision() {
-			// Game over
-			// TODO: Show score + option to start new game
-
-			// return m, tea.Quit
-			Paused = true
-			return m, nil
-		}
-
-		// Check if the crumb has been eaten
-		if m.snake.Head.X == m.crumb.x && m.snake.Head.Y == m.crumb.y {
-			m.score++
-
-			// Add new body part
-			m.AddBodyPart()
-
-			// Place new crumb at random position
-			m.PlaceCrumb()
-
-		}
-
-		// Check if we need to speed up
-		if m.snake.Head.Axis == "x" {
-			return m, doTick(normalSpeed)
-		} else {
-			return m, doTick(slowSpeed)
-		}
-
-	case tea.WindowSizeMsg:
-
-		// NOTE: Here is the real start of the game
-		m.width = msg.Width
-		m.height = msg.Height
-
-		// TODO: Move the creation of the snake to a user key press
-		m.snake = internal.CreateSnake(m.width, m.height)
-
-		// Create playlale grid
-		m.grid = make([][]string, m.height-3)
-		for i := range m.grid {
-			m.grid[i] = make([]string, m.width)
-		}
-
-		// Fill in the grid
-		m.FillGrid()
-
-		// Add one crumb
-		m.PlaceCrumb()
-	}
-
-	return m, nil
-}
-
 var style = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7bdff2"))
 var style2 = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
-
-func (m model) View() string {
-
-	if m.width == 0 || m.height == 0 {
-		return "No intialized"
-	}
-
-	// TODO: Render different view according to game state
-
-	title := fmt.Sprintf("Score: %d", m.score)
-	title = getCenteredTitle(title, m.width)
-
-	canvass := ""
-
-	for row := range m.grid {
-		for col := range m.grid[row] {
-			canvass += string(m.grid[row][col])
-		}
-		canvass += "\n"
-	}
-
-	s := style.Render(title)
-	s += "\n"
-	s += style2.Render(fmt.Sprintf("Position: (%d, %d)", m.snake.Head.X, m.snake.Head.Y) + " " + fmt.Sprintf("Paused: %t", Paused))
-	s += "\n"
-	s += canvass
-
-	return s
-
-}
 
 func (m *model) RestartGame() {
 	m.score = 0
