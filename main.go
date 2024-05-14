@@ -14,10 +14,11 @@ import (
 )
 
 type model struct {
-	score  uint
-	grid   [][]string
-	width  int
-	height int
+	gameState string
+	score     uint
+	grid      [][]string
+	width     int
+	height    int
 	crumb
 	snake internal.Snake
 }
@@ -30,9 +31,10 @@ type crumb struct {
 
 func NewModel() model {
 	return model{
-		score:  0,
-		width:  30,
-		height: 30,
+		gameState: "start",
+		score:     0,
+		width:     30,
+		height:    30,
 	}
 }
 
@@ -120,6 +122,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.RestartGame()
 				return m, doTick(normalSpeed)
 			}
+		case "enter":
+			if m.gameState == "start" {
+
+				m.gameState = "running"
+				m.snake = internal.CreateSnake(m.width, m.height)
+
+				// Create playlale grid
+				m.grid = make([][]string, m.height)
+				for i := range m.grid {
+					m.grid[i] = make([]string, m.width)
+				}
+				// Fill in the grid
+				m.FillGrid()
+				// Add one crumb
+				m.PlaceCrumb()
+				return m, doTick(normalSpeed)
+			}
 
 		}
 
@@ -165,20 +184,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height - extraRowsUsed
 
-		// TODO: Move the creation of the snake to a user key press
-		m.snake = internal.CreateSnake(m.width, m.height)
-
-		// Create playlale grid
-		m.grid = make([][]string, m.height)
-		for i := range m.grid {
-			m.grid[i] = make([]string, m.width)
-		}
-
-		// Fill in the grid
-		m.FillGrid()
-
-		// Add one crumb
-		m.PlaceCrumb()
+		// TODO: Bind the following commands to a user key press
 	}
 
 	return m, nil
@@ -191,6 +197,21 @@ func (m model) View() string {
 	}
 
 	// TODO: Render different view according to game state
+
+	if m.gameState == "start" {
+		// Render start screen
+		var startStyle = lipgloss.NewStyle().
+			SetString("Press [Enter] to Start Game").
+			Width(40).
+			Height(5).
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("63")).
+			Align(lipgloss.Center, lipgloss.Center)
+
+		var dialog = lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, startStyle.Render())
+
+		return dialog
+	}
 
 	title := fmt.Sprintf("Score: %d", m.score)
 	title = getCenteredTitle(title, m.width)
@@ -213,21 +234,6 @@ func (m model) View() string {
 	return s
 
 }
-
-// func (m model) CheckCollision() bool {
-// 	// Border collision
-// 	hasColided := false
-// 	if m.snake.Head.X == 0 || m.snake.Head.X == len(m.grid[0])-1 || m.snake.Head.Y == 0 || m.snake.Head.Y == len(m.grid)-1 {
-// 		hasColided = true
-// 	}
-//
-// 	for _, p := range m.snake.Body {
-// 		if p.X == m.snake.Head.X && p.Y == m.snake.Head.Y {
-// 			hasColided = true
-// 		}
-// 	}
-// 	return hasColided
-// }
 
 func (m *model) Advance() {
 	// Empty previous position
@@ -332,6 +338,8 @@ var style2 = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 func (m *model) RestartGame() {
 	m.score = 0
 	m.snake = internal.CreateSnake(m.width, m.height)
+	m.FillGrid()
+	m.PlaceCrumb()
 }
 
 func getPaddingLeft(title string, width int) int {
