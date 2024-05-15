@@ -294,7 +294,7 @@ func (m *model) PlaceCrumb() {
 		}
 	}
 
-	color := NextColor(m.score)
+	color := game.NextColor(m.score)
 	var crumbStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 
 	m.grid[crumbY][crumbX] = crumbStyle.Render("x")

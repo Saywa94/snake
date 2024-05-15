@@ -1,4 +1,4 @@
-package main
+package game
 
 var colors = []string{
 	"#7bdff2",
