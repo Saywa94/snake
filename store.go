@@ -3,9 +3,9 @@ package main
 import "database/sql"
 
 type Score struct {
-	ID    int
-	Name  string
-	Score int
+	ID     int
+	Name   string
+	Lenght int
 }
 
 type Store struct {
@@ -23,7 +23,7 @@ func (s *Store) Init() error {
 	CREATE TABLE IF NOT EXISTS scores (
 		id integer not null primary key,
 		name text not null,
-		score integer not null
+		length integer not null
 	);`
 
 	if _, err = s.conn.Exec(createTableStmt); err != nil {
@@ -44,11 +44,26 @@ func (s *Store) GetScores() ([]Score, error) {
 	var scores []Score
 	for rows.Next() {
 		var score Score
-		if err := rows.Scan(&score.ID, &score.Name, &score.Score); err != nil {
+		if err := rows.Scan(&score.ID, &score.Name, &score.Lenght); err != nil {
 			return nil, err
 		}
 		scores = append(scores, score)
 	}
 
 	return scores, nil
+}
+
+func (s *Store) SaveScore(score Score) error {
+
+	upsertQuery := `
+		INSERT INTO scores (name, score)
+		VALUES (?,?)
+	`
+
+	if _, err := s.conn.Exec(upsertQuery, score.Name, score.Lenght); err != nil {
+		return err
+	}
+
+	return nil
+
 }
