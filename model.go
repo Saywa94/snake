@@ -10,16 +10,23 @@ import (
 	"time"
 )
 
-var Paused = true
-
 type crumb struct {
 	x     int
 	y     int
 	style lipgloss.Style
 }
 
+type GameState string
+
+const (
+	Start   GameState = "start"
+	Playing GameState = "playing"
+	Paused  GameState = "paused"
+	End     GameState = "end"
+)
+
 type model struct {
-	gameState string
+	gameState GameState
 	score     uint
 	grid      [][]string
 	width     int
@@ -30,16 +37,9 @@ type model struct {
 
 type TickMsg time.Time
 
-func doTick(ms time.Duration) tea.Cmd {
-	Paused = false
-	return tea.Tick(time.Millisecond*ms, func(t time.Time) tea.Msg {
-		return TickMsg(t)
-	})
-}
-
 func NewModel() model {
 	return model{
-		gameState: "start",
+		gameState: Start,
 		score:     0,
 		width:     30,
 		height:    30,
@@ -48,6 +48,12 @@ func NewModel() model {
 
 func (m model) Init() tea.Cmd {
 	return nil
+}
+
+func doTick(ms time.Duration) tea.Cmd {
+	return tea.Tick(time.Millisecond*ms, func(t time.Time) tea.Msg {
+		return TickMsg(t)
+	})
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -84,23 +90,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.snake.Head.Direction = -1
 		case " ":
 			// Implement pause/resume
-			if Paused == false {
-				Paused = true
+			if m.gameState == Playing {
+				m.gameState = Paused
 				return m, nil
 			} else {
-				Paused = true
+				m.gameState = Playing
 				return m, doTick(normalSpeed)
 			}
 		case "r":
-			if Paused == true {
-				Paused = false
+			if m.gameState == Paused {
+				m.gameState = Playing
 				m.RestartGame()
 				return m, doTick(normalSpeed)
 			}
 		case "enter":
-			if m.gameState == "start" {
+			if m.gameState == Start {
 
-				m.gameState = "running"
+				m.gameState = Playing
 				m.snake = game.CreateSnake(m.width, m.height)
 
 				// Create playlale grid
@@ -119,7 +125,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case TickMsg:
 
-		if Paused == true {
+		if m.gameState == Paused {
 			return m, nil
 		}
 
@@ -130,7 +136,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// TODO: Show score + option to start new game
 
 			// return m, tea.Quit
-			Paused = true
+			m.gameState = End
 			return m, nil
 		}
 

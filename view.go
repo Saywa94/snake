@@ -43,7 +43,7 @@ func (m model) View() string {
 
 	s := style.Render(title)
 	s += "\n"
-	s += style2.Render(fmt.Sprintf("Position: (%d, %d)", m.snake.Head.X, m.snake.Head.Y) + " " + fmt.Sprintf("Paused: %t", Paused))
+	s += style2.Render(fmt.Sprintf("Position: (%d, %d)", m.snake.Head.X, m.snake.Head.Y) + " " + fmt.Sprintf("Game State: %s", m.gameState))
 	s += "\n"
 	s += canvass
 
