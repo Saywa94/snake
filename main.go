@@ -14,8 +14,13 @@ const (
 )
 
 func main() {
+	store := &Store{}
+	if err := store.Init(); err != nil {
+		fmt.Printf("Alas, unable to init store: %v", err)
+		os.Exit(1)
+	}
 
-	p := tea.NewProgram(NewModel(), tea.WithAltScreen())
+	p := tea.NewProgram(NewModel(store), tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)

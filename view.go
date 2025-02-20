@@ -29,6 +29,11 @@ func (m model) View() string {
 		return dialog
 	}
 
+	if m.gameState == End {
+
+		return "Game Over!!"
+	}
+
 	title := fmt.Sprintf("Score: %d", m.score)
 	title = getCenteredTitle(title, m.width)
 

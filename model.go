@@ -27,6 +27,7 @@ const (
 
 type model struct {
 	gameState GameState
+	store     *Store
 	score     uint
 	grid      [][]string
 	width     int
@@ -37,9 +38,10 @@ type model struct {
 
 type TickMsg time.Time
 
-func NewModel() model {
+func NewModel(store *Store) model {
 	return model{
 		gameState: Start,
+		store:     store,
 		score:     0,
 		width:     30,
 		height:    30,
@@ -98,7 +100,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, doTick(normalSpeed)
 			}
 		case "r":
-			if m.gameState == Paused {
+			if m.gameState == Paused || m.gameState == End {
 				m.gameState = Playing
 				m.RestartGame()
 				return m, doTick(normalSpeed)
@@ -133,7 +135,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.snake.HasColided(m.width, m.height) {
 			// Game over
-			// TODO: Show score + option to start new game
+			// TODO: Show scores + option to start new game
+			// TODO: Get all scores, if current score in top 10, show option to enter name
 
 			// return m, tea.Quit
 			m.gameState = End
