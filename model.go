@@ -60,53 +60,18 @@ func doTick(ms time.Duration) tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
 	case tea.KeyMsg:
 
-		switch msg.String() {
-		case "ctrl+c", "q":
-			return m, tea.Quit
-		case "up":
-			if m.snake.Head.Axis == "y" && m.snake.Head.Direction == 1 {
-				return m, nil
+		key := msg.String()
+		switch m.gameState {
+		case End:
+			switch key {
+			case "ctrl+c":
+				return m, tea.Quit
 			}
-			m.snake.Head.Axis = "y"
-			m.snake.Head.Direction = -1
-		case "down":
-			if m.snake.Head.Axis == "y" && m.snake.Head.Direction == -1 {
-				return m, nil
-			}
-			m.snake.Head.Axis = "y"
-			m.snake.Head.Direction = 1
-		case "right":
-			if m.snake.Head.Axis == "x" && m.snake.Head.Direction == -1 {
-				return m, nil
-			}
-			m.snake.Head.Axis = "x"
-			m.snake.Head.Direction = 1
-		case "left":
-			if m.snake.Head.Axis == "x" && m.snake.Head.Direction == 1 {
-				return m, nil
-			}
-			m.snake.Head.Axis = "x"
-			m.snake.Head.Direction = -1
-		case " ":
-			// Implement pause/resume
-			if m.gameState == Playing {
-				m.gameState = Paused
-				return m, nil
-			} else {
-				m.gameState = Playing
-				return m, doTick(normalSpeed)
-			}
-		case "r":
-			if m.gameState == Paused || m.gameState == End {
-				m.gameState = Playing
-				m.RestartGame()
-				return m, doTick(normalSpeed)
-			}
-		case "enter":
-			if m.gameState == Start {
+		case Start:
+			switch key {
+			case "enter":
 
 				m.gameState = Playing
 				m.snake = game.CreateSnake(m.width, m.height)
@@ -121,8 +86,63 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Add one crumb
 				m.PlaceCrumb()
 				return m, doTick(normalSpeed)
+			case "ctrl+c":
+				return m, tea.Quit
+			case "q":
+				if m.gameState != End {
+					return m, tea.Quit
+				}
 			}
 
+		case Paused:
+			switch key {
+			case " ":
+				// resume game
+				m.gameState = Playing
+				return m, doTick(normalSpeed)
+			case "r":
+				m.gameState = Playing
+				m.RestartGame()
+				return m, doTick(normalSpeed)
+			}
+
+		case Playing:
+			switch key {
+			case "ctrl+c":
+				return m, tea.Quit
+			case "q":
+				if m.gameState != End {
+					return m, tea.Quit
+				}
+			case "up":
+				if m.snake.Head.Axis == "y" && m.snake.Head.Direction == 1 {
+					return m, nil
+				}
+				m.snake.Head.Axis = "y"
+				m.snake.Head.Direction = -1
+			case "down":
+				if m.snake.Head.Axis == "y" && m.snake.Head.Direction == -1 {
+					return m, nil
+				}
+				m.snake.Head.Axis = "y"
+				m.snake.Head.Direction = 1
+			case "right":
+				if m.snake.Head.Axis == "x" && m.snake.Head.Direction == -1 {
+					return m, nil
+				}
+				m.snake.Head.Axis = "x"
+				m.snake.Head.Direction = 1
+			case "left":
+				if m.snake.Head.Axis == "x" && m.snake.Head.Direction == 1 {
+					return m, nil
+				}
+				m.snake.Head.Axis = "x"
+				m.snake.Head.Direction = -1
+			case " ":
+				// pause game
+				m.gameState = Paused
+				return m, nil
+			}
 		}
 
 	case TickMsg:
@@ -133,12 +153,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.Advance()
 
+		// Game over
 		if m.snake.HasColided(m.width, m.height) {
-			// Game over
-			// TODO: Show scores + option to start new game
-			// TODO: Get all scores, if current score in top 10, show option to enter name
-
-			// return m, tea.Quit
 			m.gameState = End
 			return m, nil
 		}
