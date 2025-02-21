@@ -32,13 +32,38 @@ func (m model) View() string {
 
 	if m.gameState == End {
 
-		endString := startStyle.SetString("Game Over!!")
-		s := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, endString.Render())
+		var scoreStyle = lipgloss.NewStyle().
+			MarginTop(10).
+			Padding(1, 3).
+			Align(lipgloss.Center).
+			Bold(true).
+			Background(m.crumb.prevStyle.GetForeground()).
+			Foreground(lipgloss.Color("#353535"))
+
+		var scoreListStyle = lipgloss.NewStyle().
+			Width(50).
+			Height(15).
+			BorderStyle(lipgloss.DoubleBorder()).
+			BorderForeground(lipgloss.Color("63")).
+			Align(lipgloss.Center, lipgloss.Top).
+			MarginTop(2).
+			Padding(1)
+
+		// Show current score in big letters
+		score := scoreStyle.Render(fmt.Sprintf("SCORE: %d", m.score))
+		s := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, score)
+
+		// TODO: Show top 10 scores
+
+		// TODO: If current score in top 10 show text input in correct place
+
+		endString := scoreListStyle.SetString("Game Over!!")
+		s += lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Top, endString.Render())
 
 		return s
 	}
 
-	title := getCenteredTitle(fmt.Sprintf("Score: %d", m.score), m.width)
+	title := lipgloss.PlaceHorizontal(m.width, lipgloss.Center, fmt.Sprintf("Score: %d", m.score))
 
 	canvass := ""
 
@@ -49,7 +74,7 @@ func (m model) View() string {
 		canvass += "\n"
 	}
 
-	s := style.Render(title)
+	s := m.crumb.prevStyle.Render(title)
 	s += "\n"
 	s += style2.Render(fmt.Sprintf("Position: (%d, %d)", m.snake.Head.X, m.snake.Head.Y) + " " + fmt.Sprintf("Game State: %s", m.gameState))
 	s += "\n"

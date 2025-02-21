@@ -11,9 +11,10 @@ import (
 )
 
 type crumb struct {
-	x     int
-	y     int
-	style lipgloss.Style
+	x         int
+	y         int
+	style     lipgloss.Style
+	prevStyle lipgloss.Style
 }
 
 type GameState string
@@ -68,6 +69,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch key {
 			case "ctrl+c":
 				return m, tea.Quit
+			case "q":
+				return m, tea.Quit
+			case "r":
+				m.gameState = Playing
+				m.RestartGame()
+				return m, doTick(normalSpeed)
 			}
 		case Start:
 			switch key {
@@ -96,6 +103,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case Paused:
 			switch key {
+			case "ctrl+c":
+				return m, tea.Quit
+			case "q":
+				return m, tea.Quit
 			case " ":
 				// resume game
 				m.gameState = Playing
@@ -111,9 +122,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "ctrl+c":
 				return m, tea.Quit
 			case "q":
-				if m.gameState != End {
-					return m, tea.Quit
-				}
+				return m, tea.Quit
 			case "up":
 				if m.snake.Head.Axis == "y" && m.snake.Head.Direction == 1 {
 					return m, nil
@@ -253,7 +262,7 @@ func (m *model) PlaceCrumb() {
 	var crumbStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 
 	m.grid[crumbY][crumbX] = crumbStyle.Render("x")
-	m.crumb = crumb{crumbX, crumbY, crumbStyle}
+	m.crumb = crumb{crumbX, crumbY, crumbStyle, m.crumb.style}
 }
 
 func (m *model) AddBodyPart() {
@@ -286,7 +295,6 @@ func (m *model) FillGrid() {
 	}
 }
 
-var style = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7bdff2"))
 var style2 = lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 
 func (m *model) RestartGame() {
