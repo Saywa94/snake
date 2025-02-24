@@ -74,9 +74,14 @@ func (m model) View() string {
 		canvass += "\n"
 	}
 
+	infoString := style2.Render(fmt.Sprintf("Position: (%d, %d)", m.snake.Head.X, m.snake.Head.Y)) + " "
+	infoString += style2.Render(fmt.Sprintf("Game State: %s", m.gameState)) + " "
+	infoString += fmt.Sprintf("First cell %s", m.grid[0][0]) + " "
+	infoString += fmt.Sprintf("Body length %d", len(m.snake.Body))
+
 	s := m.crumb.prevStyle.Render(title)
 	s += "\n"
-	s += style2.Render(fmt.Sprintf("Position: (%d, %d)", m.snake.Head.X, m.snake.Head.Y) + " " + fmt.Sprintf("Game State: %s", m.gameState))
+	s += infoString
 	s += "\n"
 	s += canvass
 
